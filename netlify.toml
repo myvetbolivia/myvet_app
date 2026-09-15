@@ -1,0 +1,10 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Esto hace que todas las rutas (como /planes o /veterinario/12) funcionen bien
+# en Netlify, ya que la app maneja la navegación internamente (React Router).
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
