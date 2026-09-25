@@ -79,6 +79,16 @@ export default function Results() {
           Limpiar filtros
         </button>
       ) : null}
+      <button
+        id="filters-done"
+        className="btn btn-primary btn-full"
+        onClick={() => {
+          setFiltersOpen(false);
+          document.getElementById("filters-toggle")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }}
+      >
+        Ver {results.length} resultado(s)
+      </button>
     </div>
   );
 
@@ -100,8 +110,10 @@ export default function Results() {
           {filtersOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
         <style>{`
+          #filters-done { display: none; }
           @media (max-width: 760px) {
             #filters-toggle { display: flex !important; }
+            #filters-done { display: flex !important; }
             #filters-panel { display: ${filtersOpen ? "block" : "none"}; }
           }
         `}</style>

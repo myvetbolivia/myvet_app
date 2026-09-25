@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ChevronLeft, Phone, MessageCircle, MapPin, GraduationCap, CalendarDays, Star, Link as LinkIcon } from "lucide-react";
+import { ChevronLeft, Phone, MessageCircle, MapPin, GraduationCap, CalendarDays, Star, Link as LinkIcon, ChevronRight, X } from "lucide-react";
 import Navbar from "../components/Navbar";
 import PlanBadge from "../components/PlanBadge";
 import Stars from "../components/Stars";
 import { supabase } from "../supabaseClient";
-import { visibleSpecialties } from "../lib/constants";
+import { visibleSpecialties, hasGallery } from "../lib/constants";
 import { useAuth } from "../context/AuthContext";
 
 function digitsOnly(s) { return (s || "").replace(/\D/g, ""); }
@@ -17,6 +17,7 @@ export default function VetProfile() {
   const [vet, setVet] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [showPhoto, setShowPhoto] = useState(false);
+  const [galleryIndex, setGalleryIndex] = useState(null);
   const [newRating, setNewRating] = useState(0);
   const [newComment, setNewComment] = useState("");
   const [posted, setPosted] = useState(false);
@@ -31,6 +32,7 @@ export default function VetProfile() {
 
   const showReviews = vet.plan !== "basico";
   const showSchedule = vet.plan !== "basico";
+  const gallery = hasGallery(vet) ? (vet.gallery || []) : [];
 
   const callVet = () => { supabase.rpc("increment_call_click", { p_vet_id: id }); window.location.href = `tel:+${digitsOnly(vet.phone)}`; };
   const openWhatsApp = () => {
@@ -104,6 +106,23 @@ export default function VetProfile() {
             </div>
 
             <Section title="Sobre mí"><p className="card" style={{ fontSize: 14, lineHeight: 1.65, padding: 16 }}>{vet.description}</p></Section>
+            {gallery.length > 0 && (
+              <Section title="Galería">
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: 10 }}>
+                  {gallery.map((url, i) => (
+                    <button
+                      key={url}
+                      type="button"
+                      onClick={() => setGalleryIndex(i)}
+                      aria-label={`Ver foto ${i + 1} más grande`}
+                      style={{ aspectRatio: "1", borderRadius: 14, overflow: "hidden", border: "none", padding: 0, cursor: "pointer", background: "var(--surface-alt)" }}
+                    >
+                      <img src={url} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                    </button>
+                  ))}
+                </div>
+              </Section>
+            )}
             <Section title="Especialidades"><TagRow items={visibleSpecialties(vet)} /></Section>
             <Section title="Especies que atiende"><TagRow items={vet.species || []} /></Section>
             <Section title="Servicios"><TagRow items={vet.services || []} /></Section>
@@ -176,6 +195,33 @@ export default function VetProfile() {
           </div>
         </div>
       </div>
+
+      {galleryIndex !== null && gallery[galleryIndex] && (
+        <div onClick={() => setGalleryIndex(null)} style={{ position: "fixed", inset: 0, background: "rgba(10,30,28,0.85)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <img
+            src={gallery[galleryIndex]}
+            alt=""
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "100%", maxHeight: "85vh", borderRadius: 16, objectFit: "contain" }}
+          />
+          <button type="button" aria-label="Cerrar" onClick={() => setGalleryIndex(null)} style={{ position: "absolute", top: 18, right: 18, width: 40, height: 40, borderRadius: "50%", border: "none", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+            <X size={20} />
+          </button>
+          {gallery.length > 1 && (
+            <>
+              <button type="button" aria-label="Foto anterior" onClick={(e) => { e.stopPropagation(); setGalleryIndex((galleryIndex - 1 + gallery.length) % gallery.length); }} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", width: 42, height: 42, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                <ChevronLeft size={22} />
+              </button>
+              <button type="button" aria-label="Foto siguiente" onClick={(e) => { e.stopPropagation(); setGalleryIndex((galleryIndex + 1) % gallery.length); }} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", width: 42, height: 42, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                <ChevronRight size={22} />
+              </button>
+              <div style={{ position: "absolute", bottom: 20, left: 0, right: 0, textAlign: "center", color: "#fff", fontSize: 13, fontWeight: 700 }}>
+                {galleryIndex + 1} de {gallery.length}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {showPhoto && (
         <div onClick={() => setShowPhoto(false)} style={{ position: "fixed", inset: 0, background: "rgba(10,30,28,0.7)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>

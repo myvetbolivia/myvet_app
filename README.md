@@ -43,10 +43,10 @@ ninguna tabla a mano ni usar el "Table Editor".
 
    | Nombre exacto             | ¿Público? |
    |----------------------------|-----------|
-   | `avatars`                  | ✅ Sí (marcá la opción "Public bucket") |
+   | `avatar`                   | ✅ Sí (marcá la opción "Public bucket") |
    | `verification-documents`   | ❌ No (dejalo privado, sin marcar nada) |
 
-   - **`avatars`**: acá se guardan las fotos de perfil de los veterinarios.
+   - **`avatar`**: acá se guardan las fotos de perfil de los veterinarios.
      Es pública porque esas fotos las tiene que poder ver cualquiera que
      entre a la página.
    - **`verification-documents`**: acá se guardan los títulos y documentos
@@ -193,7 +193,7 @@ supabase/
 **En Supabase:**
 1. Crear el proyecto.
 2. Pegar y ejecutar `supabase/schema.sql` en el SQL Editor.
-3. Crear los buckets `avatars` (público) y `verification-documents` (privado) en Storage.
+3. Crear los buckets `avatar` (público) y `verification-documents` (privado) en Storage, y correr `supabase/storage_policies.sql` y `supabase/gallery.sql` en el SQL Editor.
 4. Crear tu usuario en Authentication → Users, y correr la línea SQL para hacerlo `admin`.
 5. (Opcional) Desactivar "Confirm email" en Authentication → Providers → Email.
 6. Copiar tu **Project URL** y tu **anon public key** desde Project Settings → API.

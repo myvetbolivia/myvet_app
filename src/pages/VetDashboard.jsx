@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, Clock, PauseCircle, Bell, TrendingUp, Eye, MessageCircle, Phone, Star, LogOut, Camera, Upload } from "lucide-react";
+import { CheckCircle2, Clock, PauseCircle, Bell, TrendingUp, Eye, MessageCircle, Phone, Star, LogOut, Camera, Upload, ImagePlus, X, Lock } from "lucide-react";
 import Logo from "../components/Logo";
 import MultiSelect from "../components/MultiSelect";
 import SpecialtyPicker from "../components/SpecialtyPicker";
 import { supabase } from "../supabaseClient";
 import { useAuth } from "../context/AuthContext";
-import { SPECIES, SERVICES, PROVINCIAS, MUNICIPIOS, ZONAS, PLAN_LABEL } from "../lib/constants";
+import { uploadAvatar, uploadGalleryPhoto, deleteImageByUrl } from "../lib/uploadAvatar";
+import { SPECIES, SERVICES, PROVINCIAS, MUNICIPIOS, ZONAS, PLAN_LABEL, GALLERY_MAX, hasGallery } from "../lib/constants";
 
 function daysUntil(dateStr) {
   if (!dateStr) return 9999;
@@ -20,6 +21,10 @@ export default function VetDashboard() {
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const [newPassword, setNewPassword] = useState("");
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoError, setPhotoError] = useState("");
+  const [galleryUploading, setGalleryUploading] = useState(false);
+  const [galleryError, setGalleryError] = useState("");
 
   useEffect(() => {
     if (authLoading) return;
@@ -49,6 +54,64 @@ export default function VetDashboard() {
   };
 
   const set = (field) => (value) => setVet((v) => ({ ...v, [field]: value }));
+
+  // Sube una foto nueva y la guarda en el perfil al instante.
+  const changePhoto = async (file) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { setPhotoError("Elegí una imagen (JPG o PNG)."); return; }
+    setPhotoUploading(true);
+    setPhotoError("");
+    try {
+      const url = await uploadAvatar(vet.id, file);
+      const { error } = await supabase.from("veterinarian_profiles").update({ photo_url: url }).eq("id", vet.id);
+      if (error) throw error;
+      setVet((v) => ({ ...v, photo_url: url }));
+    } catch (e) {
+      console.error("No se pudo cambiar la foto:", e);
+      setPhotoError("No se pudo subir la foto. Probá con otra imagen o intentá de nuevo.");
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
+  // ---- Galería de fotos (Premium y Premium Ultra Smart, hasta 5) ----
+  const gallery = vet.gallery || [];
+
+  const saveGallery = async (list) => {
+    const { error } = await supabase.from("veterinarian_profiles").update({ gallery: list }).eq("id", vet.id);
+    if (error) throw error;
+    setVet((v) => ({ ...v, gallery: list }));
+  };
+
+  const addGalleryPhotos = async (fileList) => {
+    const files = Array.from(fileList || []).filter((f) => f.type.startsWith("image/"));
+    if (!files.length) return;
+    const free = GALLERY_MAX - gallery.length;
+    if (free <= 0) { setGalleryError(`Ya tenés ${GALLERY_MAX} fotos. Quitá una para agregar otra.`); return; }
+    setGalleryUploading(true);
+    setGalleryError(files.length > free ? `Solo se agregaron ${free} foto(s): el máximo es ${GALLERY_MAX}.` : "");
+    try {
+      const urls = [];
+      for (const f of files.slice(0, free)) urls.push(await uploadGalleryPhoto(vet.id, f));
+      await saveGallery([...gallery, ...urls]);
+    } catch (e) {
+      console.error("No se pudo subir la foto de la galería:", e);
+      setGalleryError("No se pudo subir la foto. Probá con otra imagen o intentá de nuevo.");
+    } finally {
+      setGalleryUploading(false);
+    }
+  };
+
+  const removeGalleryPhoto = async (url) => {
+    setGalleryError("");
+    try {
+      await saveGallery(gallery.filter((u) => u !== url));
+      deleteImageByUrl(url).catch(() => {});
+    } catch (e) {
+      console.error("No se pudo quitar la foto:", e);
+      setGalleryError("No se pudo quitar la foto. Intentá de nuevo.");
+    }
+  };
 
   const notifications = [];
   if (vet.verification_status === "pending") {
@@ -105,6 +168,62 @@ export default function VetDashboard() {
         </div>
 
         <div className="card" style={{ padding: 26, display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+            <div style={{ width: 84, height: 84, borderRadius: 22, background: "var(--surface-alt)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 38, flexShrink: 0, overflow: "hidden" }}>
+              {vet.photo_url ? <img src={vet.photo_url} alt="Tu foto de perfil" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "🐾"}
+            </div>
+            <div>
+              <div className="field-label">Foto de perfil</div>
+              <label className="btn btn-ghost" style={{ cursor: photoUploading ? "wait" : "pointer", opacity: photoUploading ? 0.6 : 1 }}>
+                <Camera size={16} /> {photoUploading ? "Subiendo..." : vet.photo_url ? "Cambiar foto" : "Subir foto"}
+                <input type="file" accept="image/*" hidden disabled={photoUploading} onChange={(e) => { changePhoto(e.target.files?.[0]); e.target.value = ""; }} />
+              </label>
+              <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}>Se guarda automáticamente al elegirla.</div>
+              {photoError && <div style={{ fontSize: 12.5, color: "var(--danger)", marginTop: 6, fontWeight: 600 }}>{photoError}</div>}
+            </div>
+          </div>
+
+          <div>
+            <div className="field-label">Galería de fotos{hasGallery(vet) ? ` · ${gallery.length} de ${GALLERY_MAX}` : ""}</div>
+            {hasGallery(vet) ? (
+              <>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))", gap: 10 }}>
+                  {gallery.map((url) => (
+                    <div key={url} style={{ position: "relative", aspectRatio: "1", borderRadius: 14, overflow: "hidden", background: "var(--surface-alt)" }}>
+                      <img src={url} alt="Foto de la galería" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <button
+                        type="button"
+                        aria-label="Quitar foto"
+                        onClick={() => removeGalleryPhoto(url)}
+                        style={{ position: "absolute", top: 6, right: 6, width: 28, height: 28, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.92)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                      >
+                        <X size={15} color="var(--danger)" />
+                      </button>
+                    </div>
+                  ))}
+                  {gallery.length < GALLERY_MAX && (
+                    <label style={{ aspectRatio: "1", borderRadius: 14, border: "1.5px dashed var(--primary)", color: "var(--primary)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, fontSize: 12.5, fontWeight: 700, cursor: galleryUploading ? "wait" : "pointer", opacity: galleryUploading ? 0.6 : 1 }}>
+                      <ImagePlus size={20} />
+                      {galleryUploading ? "Subiendo..." : "Agregar"}
+                      <input type="file" accept="image/*" multiple hidden disabled={galleryUploading} onChange={(e) => { addGalleryPhotos(e.target.files); e.target.value = ""; }} />
+                    </label>
+                  )}
+                </div>
+                <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 8 }}>
+                  {gallery.length >= GALLERY_MAX
+                    ? `Llegaste al máximo de ${GALLERY_MAX} fotos. Quitá una para agregar otra.`
+                    : `Mostrá tu consultorio, tu equipo o tu trabajo. Máximo ${GALLERY_MAX} fotos. Se guardan automáticamente.`}
+                </div>
+                {galleryError && <div style={{ fontSize: 12.5, color: "var(--danger)", marginTop: 6, fontWeight: 600 }}>{galleryError}</div>}
+              </>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--surface-alt)", borderRadius: 12, padding: "12px 14px", flexWrap: "wrap" }}>
+                <Lock size={16} color="var(--muted)" />
+                <span style={{ fontSize: 13, flex: 1, minWidth: 180 }}>La galería de fotos está disponible en los planes Premium y Premium Ultra Smart.</span>
+                <button type="button" className="btn btn-ghost" style={{ padding: "6px 14px" }} onClick={() => navigate("/planes")}>Ver planes</button>
+              </div>
+            )}
+          </div>
           <Field label="Nombre completo"><input className="input" value={vet.full_name || ""} onChange={(e) => set("full_name")(e.target.value)} /></Field>
           <Field label="Email"><input className="input" value={vet.email || ""} onChange={(e) => set("email")(e.target.value)} /></Field>
           <div className="g2">

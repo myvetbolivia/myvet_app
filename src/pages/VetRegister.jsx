@@ -6,6 +6,7 @@ import MultiSelect from "../components/MultiSelect";
 import SpecialtyPicker from "../components/SpecialtyPicker";
 import TermsModal from "../components/TermsModal";
 import { supabase } from "../supabaseClient";
+import { uploadAvatar, safeFileName } from "../lib/uploadAvatar";
 import { SPECIES, SERVICES, PROVINCIAS, MUNICIPIOS, ZONAS } from "../lib/constants";
 
 const STEPS = ["Datos básicos", "Especialidades y zona", "Documentación"];
@@ -64,14 +65,15 @@ export default function VetRegister() {
       // 2) Pasar su perfil de "client" (por defecto) a "veterinarian"
       await supabase.from("profiles").update({ role: "veterinarian" }).eq("id", user.id);
 
-      // 3) Subir la foto (si la cargó) al bucket "avatars"
+      // 3) Subir la foto (si la cargó) al bucket "avatar".
+      //    Si falla, la cuenta se crea igual y la foto se puede subir después
+      //    desde "Tu perfil profesional".
       let photoUrl = null;
       if (photoFile) {
-        const path = `${user.id}/${photoFile.name}`;
-        const { error: upErr } = await supabase.storage.from("avatars").upload(path, photoFile, { upsert: true });
-        if (!upErr) {
-          const { data } = supabase.storage.from("avatars").getPublicUrl(path);
-          photoUrl = data.publicUrl;
+        try {
+          photoUrl = await uploadAvatar(user.id, photoFile);
+        } catch (e) {
+          console.error("No se pudo subir la foto de perfil:", e);
         }
       }
 
@@ -95,10 +97,12 @@ export default function VetRegister() {
 
       // 5) Subir documentación de verificación (si la cargó) al bucket privado
       if (docFile) {
-        const path = `${user.id}/${docFile.name}`;
+        const path = `${user.id}/${safeFileName("documento", docFile)}`;
         const { error: docErr } = await supabase.storage.from("verification-documents").upload(path, docFile, { upsert: true });
         if (!docErr) {
           await supabase.from("verification_documents").insert({ veterinarian_id: user.id, doc_url: path, doc_type: docFile.type });
+        } else {
+          console.error("No se pudo subir el documento:", docErr);
         }
       }
 

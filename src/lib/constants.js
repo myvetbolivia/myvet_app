@@ -43,6 +43,12 @@ export function visibleSpecialties(vet) {
   return vet.plan === "basico" ? vet.specialties.slice(0, 1) : vet.specialties;
 }
 
+// Galería de fotos: solo para Premium y Premium Ultra Smart, hasta 5 fotos.
+export const GALLERY_MAX = 5;
+export function hasGallery(vet) {
+  return vet.plan === "premium" || vet.plan === "ultra";
+}
+
 export function isPubliclyVisible(vet) {
   return vet.profile_status === "active" && (!vet.plan_expiry || vet.plan_expiry >= new Date().toISOString().slice(0, 10));
 }

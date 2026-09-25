@@ -1,5 +1,5 @@
 import Navbar from "../components/Navbar";
-import { User, FileText, Star, PawPrint, Settings, Phone, MapPin, Clock, BarChart3, MessageCircle, Ban, Crown, ArrowUpRight, Heart, Search } from "lucide-react";
+import { User, FileText, Star, PawPrint, Settings, Phone, MapPin, Clock, BarChart3, MessageCircle, Ban, Crown, ArrowUpRight, Heart, Search, Images } from "lucide-react";
 
 const PLANS = [
   {
@@ -11,7 +11,8 @@ const PLANS = [
     ],
     excludes: [
       { icon: Clock, label: "Horarios" }, { icon: Star, label: "Estrellas" }, { icon: BarChart3, label: "Calificación promedio" },
-      { icon: MessageCircle, label: "Reseñas y comentarios" }, { icon: Ban, label: "Prioridad en resultados" },
+      { icon: MessageCircle, label: "Reseñas y comentarios" }, { icon: Images, label: "Galería de fotos" },
+      { icon: Ban, label: "Prioridad en resultados" },
     ],
     footer: "Da el primer paso", footerIcon: PawPrint,
   },
@@ -19,9 +20,11 @@ const PLANS = [
     id: "premium", name: "Premium", tagline: "Más información y mayor confianza.", tone: "teal", badgeIcon: Star,
     includes: [
       { icon: User, label: "Perfil público" }, { icon: FileText, label: "Información profesional" },
-      { icon: PawPrint, label: "Especies" }, { icon: Settings, label: "Servicios" }, { icon: Phone, label: "Teléfono" },
+      { icon: Star, label: "Varias especialidades", note: "Todas las que tengas." }, { icon: PawPrint, label: "Especies" },
+      { icon: Settings, label: "Servicios" }, { icon: Phone, label: "Teléfono" },
       { icon: MapPin, label: "Ubicación" }, { icon: Clock, label: "Horarios" }, { icon: Star, label: "Estrellas" },
       { icon: BarChart3, label: "Calificación promedio" }, { icon: MessageCircle, label: "Reseñas y comentarios" },
+      { icon: Images, label: "Galería de fotos", note: "Hasta 5 fotos." },
     ],
     footer: "Genera confianza y conecta con más clientes.", footerIcon: Heart,
   },
