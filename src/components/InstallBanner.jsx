@@ -32,7 +32,7 @@ function wasDismissed() {
   try { return localStorage.getItem(DISMISS_KEY) === "1"; } catch { return false; }
 }
 
-export default function InstallBanner() {
+export default function InstallBanner({ style }) {
   const [device] = useState(detectDevice);
   const [canPrompt, setCanPrompt] = useState(!!deferredPrompt);
   const [hidden, setHidden] = useState(wasDismissed);
@@ -104,19 +104,19 @@ export default function InstallBanner() {
 
   return (
     <>
-      <div className="install-banner">
-        <img src="/icon-192.png" alt="" width="54" height="54" style={{ borderRadius: 14, flexShrink: 0, boxShadow: "0 6px 16px -6px rgba(0,0,0,0.4)" }} />
-        <div style={{ flex: 1, minWidth: 150 }}>
-          <div style={{ color: "#fff", fontWeight: 800, fontSize: 17, lineHeight: 1.2 }}>Llevá MyVet en tu celular</div>
-          <div style={{ color: "#CFE6E2", fontSize: 13.5, marginTop: 3 }}>
+      <div className="install-banner" style={style}>
+        <img src="/icon-192.png" alt="" width="40" height="40" style={{ borderRadius: 10, flexShrink: 0 }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ color: "#fff", fontWeight: 800, fontSize: 14, lineHeight: 1.25 }}>Llevá MyVet en tu celular</div>
+          <div style={{ color: "#CFE6E2", fontSize: 12, marginTop: 1 }}>
             Gratis y sin {device.isIOS ? "App Store" : "Play Store"}
           </div>
         </div>
         <button type="button" className="btn btn-accent install-banner-btn" onClick={install}>
-          <Download size={17} /> Descargar App
+          <Download size={15} /> Descargar App
         </button>
         <button type="button" aria-label="Cerrar aviso" onClick={dismiss} className="install-banner-close">
-          <X size={16} />
+          <X size={14} />
         </button>
       </div>
 

@@ -43,6 +43,8 @@ export default function Home() {
             De medicina de pequeños animales a piscicultura: filtrá por especie, especialidad, provincia y zona, y contactá directo por WhatsApp o llamada.
           </p>
 
+          <InstallBanner style={{ width: "100%", maxWidth: 560, textAlign: "left", margin: "22px 0 0" }} />
+
           <div className="card" style={{ marginTop: 28, width: "100%", padding: 22, textAlign: "left", boxShadow: "0 20px 50px -20px rgba(14,110,100,0.25)" }}>
             <div className="g2">
               <MultiSelect label="Especie" options={SPECIES} selected={filters.species} onChange={(v) => setFilters((f) => ({ ...f, species: v }))} placeholder="¿Qué animal?" />
@@ -74,8 +76,6 @@ export default function Home() {
       </div>
 
       <div className="container" style={{ padding: "10px 28px 80px" }}>
-        <InstallBanner />
-
         {featured.length > 0 && (
           <>
             <h2 style={{ fontSize: 26, marginBottom: 22 }}>Veterinarios destacados</h2>
