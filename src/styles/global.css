@@ -149,3 +149,48 @@ textarea.input { height: auto; padding: 11px 13px; resize: none; }
   animation: spin .7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- Aviso "Descargar App" (página principal) ---------- */
+.install-banner {
+  position: relative;
+  margin: 8px 0 34px;
+  padding: 18px 46px 18px 18px;
+  border-radius: 22px;
+  background: linear-gradient(120deg, var(--primary-dark) 0%, var(--primary) 100%);
+  box-shadow: 0 18px 40px -22px rgba(10, 79, 73, 0.8);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.install-banner-btn {
+  font-size: 15px;
+  padding: 12px 20px;
+  box-shadow: 0 8px 20px -8px rgba(242, 153, 74, 0.9);
+  animation: install-pulse 2.4s ease-in-out infinite;
+}
+.install-banner-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+@keyframes install-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+@media (max-width: 520px) {
+  .install-banner-btn { width: 100%; justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .install-banner-btn { animation: none; }
+}

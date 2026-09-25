@@ -5,6 +5,7 @@ import Navbar from "../components/Navbar";
 import VetCard from "../components/VetCard";
 import MultiSelect from "../components/MultiSelect";
 import SpecialtyPicker from "../components/SpecialtyPicker";
+import InstallBanner from "../components/InstallBanner";
 import { supabase } from "../supabaseClient";
 import { SPECIES, PROVINCIAS, ZONAS } from "../lib/constants";
 import { useSearchFilters } from "../lib/useSearchFilters";
@@ -73,6 +74,8 @@ export default function Home() {
       </div>
 
       <div className="container" style={{ padding: "10px 28px 80px" }}>
+        <InstallBanner />
+
         {featured.length > 0 && (
           <>
             <h2 style={{ fontSize: 26, marginBottom: 22 }}>Veterinarios destacados</h2>
