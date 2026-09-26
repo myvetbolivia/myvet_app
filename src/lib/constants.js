@@ -16,6 +16,7 @@ export const SPECIALTIES_GROUPED = [
   { category: "Reproducción", items: ["Reproducción animal", "Obstetricia veterinaria", "Ginecología veterinaria", "Andrología veterinaria", "Fertilidad", "Reproducción asistida", "Transferencia embrionaria", "Inseminación artificial", "Neonatología"] },
   { category: "Salud pública y producción", items: ["Epidemiología veterinaria", "Salud pública veterinaria", "Medicina preventiva", "Zoonosis", "Seguridad alimentaria", "Inspección sanitaria", "Tecnología de alimentos de origen animal", "Higiene de alimentos", "Salud de poblaciones animales", "Bioseguridad"] },
   { category: "Otras áreas veterinarias", items: ["Farmacología veterinaria", "Toxicología veterinaria", "Nutrición clínica", "Bienestar animal", "Etología veterinaria", "Medicina del comportamiento", "Gestión sanitaria", "Investigación veterinaria", "Medicina veterinaria legal y forense", "Veterinaria de laboratorio", "Medicina de zoológicos"] },
+  { category: "Servicios para mascotas (no veterinarios)", items: ["Pet shop", "Entrenamiento y adiestramiento", "Peluquería y estética", "Paseo de perros"] },
 ];
 export const SPECIALTIES_FLAT = SPECIALTIES_GROUPED.flatMap((g) => g.items);
 
@@ -51,6 +52,37 @@ export function hasGallery(vet) {
 
 export function isPubliclyVisible(vet) {
   return vet.profile_status === "active" && (!vet.plan_expiry || vet.plan_expiry >= new Date().toISOString().slice(0, 10));
+}
+
+// ---------- Lugares donde atiende cada veterinario (varios a la vez) ----------
+// Opción "Todo" de cada lista: quien la marca aparece en cualquier búsqueda.
+export const ALL_PROVINCIAS = "Todo el departamento";
+export const ALL_MUNICIPIOS = "Todos los municipios";
+export const ALL_ZONAS = "Todas las zonas";
+
+// Devuelve la lista de lugares del veterinario. Si es un perfil antiguo que
+// todavía tiene un solo valor cargado, usa ese.
+function placeList(list, single) {
+  if (Array.isArray(list) && list.length) return list;
+  return single ? [single] : [];
+}
+export const vetProvincias = (v) => placeList(v.provincias, v.provincia);
+export const vetMunicipios = (v) => placeList(v.municipios, v.municipio);
+export const vetZonas = (v) => placeList(v.zonas, v.zona);
+
+// ¿El veterinario atiende en alguno de los lugares que eligió el cliente?
+export function servesIn(vetPlaces, selected, allLabel) {
+  if (!selected.length) return true;
+  return vetPlaces.includes(allLabel) || vetPlaces.some((p) => selected.includes(p));
+}
+
+// Texto corto para las tarjetas de resultados: "Warnes, Sara y 2 más".
+export function placesSummary(v) {
+  const all = [...vetZonas(v), ...vetMunicipios(v), ...vetProvincias(v)];
+  const unique = [...new Set(all)];
+  if (!unique.length) return "";
+  if (unique.length <= 2) return unique.join(" · ");
+  return `${unique.slice(0, 2).join(" · ")} y ${unique.length - 2} más`;
 }
 
 export const SUPPORT_EMAIL = "atencion.myvet@gmail.com";

@@ -5,7 +5,7 @@ import Navbar from "../components/Navbar";
 import PlanBadge from "../components/PlanBadge";
 import Stars from "../components/Stars";
 import { supabase } from "../supabaseClient";
-import { visibleSpecialties, hasGallery } from "../lib/constants";
+import { visibleSpecialties, hasGallery, vetProvincias, vetMunicipios, vetZonas } from "../lib/constants";
 import { useAuth } from "../context/AuthContext";
 
 function digitsOnly(s) { return (s || "").replace(/\D/g, ""); }
@@ -13,7 +13,7 @@ function digitsOnly(s) { return (s || "").replace(/\D/g, ""); }
 export default function VetProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { session, profile } = useAuth();
+  const { session, profile, loading: authLoading } = useAuth();
   const [vet, setVet] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [showPhoto, setShowPhoto] = useState(false);
@@ -25,8 +25,14 @@ export default function VetProfile() {
   useEffect(() => {
     supabase.from("veterinarian_profiles").select("*").eq("id", id).maybeSingle().then(({ data }) => setVet(data));
     supabase.from("reviews").select("*, profiles:client_id(full_name)").eq("veterinarian_id", id).eq("status", "published").order("created_at", { ascending: false }).then(({ data }) => setReviews(data || []));
-    supabase.rpc("increment_profile_view", { p_vet_id: id });
   }, [id]);
+
+  // Cuenta la visita solo si no es el propio veterinario mirando su perfil.
+  const isOwner = session?.user?.id === id;
+  useEffect(() => {
+    if (authLoading || isOwner) return;
+    supabase.rpc("increment_profile_view", { p_vet_id: id });
+  }, [id, authLoading]);
 
   if (!vet) return <div><Navbar /><div className="container" style={{ padding: 40 }}>Cargando perfil...</div></div>;
 
@@ -34,14 +40,14 @@ export default function VetProfile() {
   const showSchedule = vet.plan !== "basico";
   const gallery = hasGallery(vet) ? (vet.gallery || []) : [];
 
-  const callVet = () => { supabase.rpc("increment_call_click", { p_vet_id: id }); window.location.href = `tel:+${digitsOnly(vet.phone)}`; };
+  const callVet = () => { if (!isOwner) supabase.rpc("increment_call_click", { p_vet_id: id }); window.location.href = `tel:+${digitsOnly(vet.phone)}`; };
   const openWhatsApp = () => {
-    supabase.rpc("increment_whatsapp_click", { p_vet_id: id });
+    if (!isOwner) supabase.rpc("increment_whatsapp_click", { p_vet_id: id });
     const num = digitsOnly(vet.whatsapp);
     const full = num.length <= 8 ? `591${num}` : num;
     window.open(`https://wa.me/${full}?text=${encodeURIComponent(`Hola ${vet.full_name}, te contacto desde MyVet.`)}`, "_blank");
   };
-  const openInMaps = () => { supabase.rpc("increment_location_click", { p_vet_id: id }); window.open(`https://www.google.com/maps/search/?api=1&query=${vet.lat},${vet.lng}`, "_blank"); };
+  const openInMaps = () => { if (!isOwner) supabase.rpc("increment_location_click", { p_vet_id: id }); window.open(`https://www.google.com/maps/search/?api=1&query=${vet.lat},${vet.lng}`, "_blank"); };
 
   const submitReview = async () => {
     if (!newRating || !session) return;
@@ -126,6 +132,20 @@ export default function VetProfile() {
             <Section title="Especialidades"><TagRow items={visibleSpecialties(vet)} /></Section>
             <Section title="Especies que atiende"><TagRow items={vet.species || []} /></Section>
             <Section title="Servicios"><TagRow items={vet.services || []} /></Section>
+            {(vetProvincias(vet).length > 0 || vetMunicipios(vet).length > 0 || vetZonas(vet).length > 0) && (
+              <Section title="Dónde atiende">
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {[["Provincias", vetProvincias(vet)], ["Municipios", vetMunicipios(vet)], ["Zonas", vetZonas(vet)]]
+                    .filter(([, items]) => items.length)
+                    .map(([title, items]) => (
+                      <div key={title}>
+                        <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>{title}</div>
+                        <TagRow items={items} />
+                      </div>
+                    ))}
+                </div>
+              </Section>
+            )}
 
             {showSchedule && (
               <Section title="Horario de atención">
@@ -182,7 +202,7 @@ export default function VetProfile() {
           <div>
             <div className="card" style={{ padding: 20, position: "sticky", top: 20 }}>
               <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 14 }}>Datos de contacto</div>
-              <InfoRow icon={MapPin} label={`${vet.address} · ${vet.provincia}`} />
+              {vet.address && <InfoRow icon={MapPin} label={vet.address} />}
               <InfoRow icon={Phone} label={vet.phone} onClick={callVet} />
               <InfoRow icon={MessageCircle} label={vet.whatsapp} onClick={openWhatsApp} />
               {vet.lat && vet.lng && (

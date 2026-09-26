@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { MapPin } from "lucide-react";
 import PlanBadge from "./PlanBadge";
 import Stars from "./Stars";
+import { placesSummary } from "../lib/constants";
 
 export default function VetCard({ vet }) {
   const navigate = useNavigate();
@@ -19,7 +20,7 @@ export default function VetCard({ vet }) {
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
         <div style={{ fontSize: 12.5, color: "var(--muted)", display: "flex", alignItems: "center", gap: 4 }}>
-          <MapPin size={13} /> {vet.zona || vet.municipio}
+          <MapPin size={13} /> {placesSummary(vet) || "Ubicación a confirmar"}
         </div>
         <Stars rating={vet.rating} />
       </div>

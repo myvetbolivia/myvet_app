@@ -33,8 +33,8 @@ export default function MultiSelect({ label, options, selected, onChange, placeh
         onClick={() => setOpen((o) => !o)}
         style={{ textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}
       >
-        <span style={{ color: selected.length ? "var(--ink)" : "var(--muted)" }}>
-          {selected.length ? `${selected.length} seleccionada(s)` : placeholder}
+        <span style={{ color: selected.length ? "var(--ink)" : "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
+          {selected.length === 0 ? placeholder : selected.length <= 2 ? selected.join(", ") : `${selected.length} seleccionadas`}
         </span>
         {open ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
       </button>

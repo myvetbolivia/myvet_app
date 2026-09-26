@@ -190,3 +190,39 @@ textarea.input { height: auto; padding: 11px 13px; resize: none; }
 @media (prefers-reduced-motion: reduce) {
   .install-banner-btn { animation: none; }
 }
+
+/* ---------- Aviso "Hay movimiento en tu perfil" (veterinario con sesión abierta) ---------- */
+.vet-news-banner {
+  position: relative;
+  width: 100%;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--sans);
+  color: #fff;
+  padding: 13px 14px;
+  border-radius: 16px;
+  background: linear-gradient(120deg, var(--primary-dark) 0%, var(--primary) 100%);
+  box-shadow: 0 12px 28px -18px rgba(10, 79, 73, 0.8);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.vet-news-dot {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #fff;
+  animation: install-pulse 1.6s ease-in-out infinite;
+}
+.vet-news-box {
+  border-radius: 16px;
+  padding: 16px 18px;
+  margin-bottom: 22px;
+  color: #fff;
+  background: linear-gradient(120deg, var(--primary-dark) 0%, var(--primary) 100%);
+}

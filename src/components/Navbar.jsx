@@ -9,6 +9,7 @@ export default function Navbar() {
   const navigate = useNavigate();
   const { session, profile, signOut } = useAuth();
   const isClient = session && profile?.role === "client";
+  const isVet = session && profile?.role === "veterinarian";
 
   const links = (
     <>
@@ -33,10 +34,16 @@ export default function Navbar() {
 
       <div className="nav-divider" />
 
-      <button className="btn btn-subtle" onClick={() => { navigate("/veterinario/ingresar"); setOpen(false); }} style={{ background: "none", padding: 0, fontWeight: 600, color: "var(--muted)", fontSize: 13 }}>
-        ¿Sos vet? Ingresar a perfil
-      </button>
-      <button className="btn btn-ghost" onClick={() => { navigate("/veterinario/registro"); setOpen(false); }}>Soy veterinario (crear perfil)</button>
+      {isVet ? (
+        <button className="btn btn-primary" onClick={() => { navigate("/veterinario/panel"); setOpen(false); }}>Mi perfil profesional</button>
+      ) : (
+        <>
+          <button className="btn btn-subtle" onClick={() => { navigate("/veterinario/ingresar"); setOpen(false); }} style={{ background: "none", padding: 0, fontWeight: 600, color: "var(--muted)", fontSize: 13 }}>
+            ¿Sos vet? Ingresar a perfil
+          </button>
+          <button className="btn btn-ghost" onClick={() => { navigate("/veterinario/registro"); setOpen(false); }}>Soy veterinario (crear perfil)</button>
+        </>
+      )}
     </>
   );
 

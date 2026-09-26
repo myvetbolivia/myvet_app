@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, Clock, PauseCircle, Bell, TrendingUp, Eye, MessageCircle, Phone, Star, LogOut, Camera, Upload, ImagePlus, X, Lock } from "lucide-react";
+import { CheckCircle2, Clock, PauseCircle, Bell, TrendingUp, Eye, MessageCircle, Phone, Star, LogOut, Camera, Sparkles, MapPin, Upload, ImagePlus, X, Lock } from "lucide-react";
 import Logo from "../components/Logo";
 import MultiSelect from "../components/MultiSelect";
 import SpecialtyPicker from "../components/SpecialtyPicker";
+import PlaceSelect from "../components/PlaceSelect";
 import { supabase } from "../supabaseClient";
 import { useAuth } from "../context/AuthContext";
+import { getVetNews, markVetNewsSeen } from "../lib/vetNews";
 import { uploadAvatar, uploadGalleryPhoto, deleteImageByUrl } from "../lib/uploadAvatar";
-import { SPECIES, SERVICES, PROVINCIAS, MUNICIPIOS, ZONAS, PLAN_LABEL, GALLERY_MAX, hasGallery } from "../lib/constants";
+import { SPECIES, SERVICES, PROVINCIAS, MUNICIPIOS, ZONAS, ALL_PROVINCIAS, ALL_MUNICIPIOS, ALL_ZONAS, vetProvincias, vetMunicipios, vetZonas, PLAN_LABEL, GALLERY_MAX, hasGallery, SUPPORT_EMAIL } from "../lib/constants";
 
 function daysUntil(dateStr) {
   if (!dateStr) return 9999;
@@ -21,6 +23,7 @@ export default function VetDashboard() {
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const [newPassword, setNewPassword] = useState("");
+  const [news, setNews] = useState([]);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoError, setPhotoError] = useState("");
   const [galleryUploading, setGalleryUploading] = useState(false);
@@ -31,18 +34,37 @@ export default function VetDashboard() {
     if (!session) { navigate("/veterinario/ingresar"); return; }
     supabase.from("veterinarian_profiles").select("*").eq("id", session.user.id).maybeSingle().then(({ data }) => {
       setVet(data);
+      if (data) {
+        setNews(getVetNews(data));
+        markVetNewsSeen(data);
+      }
       setLoading(false);
     });
   }, [session, authLoading]);
 
-  if (loading || !vet) return <div style={{ padding: 40 }}>Cargando tu perfil...</div>;
+  if (loading) return <div style={{ padding: 40 }}>Cargando tu perfil...</div>;
+  if (!vet) {
+    return (
+      <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+        <div className="card" style={{ padding: 32, maxWidth: 420, textAlign: "center" }}>
+          <h2 style={{ fontSize: 20, marginBottom: 10 }}>No encontramos tu perfil profesional</h2>
+          <p style={{ fontSize: 14, color: "var(--muted)", lineHeight: 1.6, marginBottom: 20 }}>
+            Puede que haya sido eliminado. Si creés que es un error, escribinos a <b style={{ color: "var(--ink)" }}>{SUPPORT_EMAIL}</b>.
+          </p>
+          <button className="btn btn-primary btn-full" onClick={async () => { await signOut(); navigate("/"); }}>Volver al inicio</button>
+        </div>
+      </div>
+    );
+  }
 
   const save = async () => {
     const updated = {
       full_name: vet.full_name, email: vet.email, phone: vet.phone, whatsapp: vet.whatsapp,
       description: vet.description, university: vet.university, species: vet.species,
-      specialties: vet.specialties, services: vet.services, provincia: vet.provincia,
-      municipio: vet.municipio, zona: vet.zona, address: vet.address, social_link: vet.social_link,
+      specialties: vet.specialties, services: vet.services,
+      provincias: vetProvincias(vet), municipios: vetMunicipios(vet), zonas: vetZonas(vet),
+      provincia: vetProvincias(vet)[0] || null, municipio: vetMunicipios(vet)[0] || null, zona: vetZonas(vet)[0] || null,
+      address: vet.address, social_link: vet.social_link,
     };
     await supabase.from("veterinarian_profiles").update(updated).eq("id", vet.id);
     if (newPassword.trim().length >= 6) {
@@ -130,6 +152,24 @@ export default function VetDashboard() {
         <Logo size={36} onClick={() => navigate("/")} />
         <h1 style={{ fontSize: 26, margin: "22px 0 4px" }}>Tu perfil profesional</h1>
         <p style={{ fontSize: 13.5, color: "var(--muted)", marginBottom: 18 }}>Podés editarlo cuando quieras, esté aprobado o pendiente de revisión.</p>
+
+        {news.length > 0 && (
+          <div className="vet-news-box">
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 800, fontSize: 15, marginBottom: 10 }}>
+              <Sparkles size={18} /> Novedades desde tu última visita
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {news.map((n) => {
+                const Icon = { profile_views: Eye, whatsapp_clicks: MessageCircle, call_clicks: Phone, location_clicks: MapPin, reviews_count: Star }[n.key];
+                return (
+                  <div key={n.key} style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 13.5, color: "#E4F4F1" }}>
+                    <Icon size={15} /> {n.text}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div style={{ background: vet.verification_status === "pending" ? "var(--accent-soft)" : "var(--celeste-soft)", borderRadius: 14, padding: "12px 16px", marginBottom: 22, display: "flex", alignItems: "center", gap: 10 }}>
           {vet.verification_status === "pending" ? (
@@ -235,12 +275,13 @@ export default function VetDashboard() {
           <MultiSelect label="Especies que atendés" options={SPECIES} selected={vet.species || []} onChange={set("species")} />
           <SpecialtyPicker label="Especialidades (podés elegir varias)" selected={vet.specialties || []} onChange={set("specialties")} />
           <MultiSelect label="Servicios que ofrecés" options={SERVICES} selected={vet.services || []} onChange={set("services")} />
-          <div className="g2">
-            <Field label="Provincia"><select className="input" value={vet.provincia || ""} onChange={(e) => set("provincia")(e.target.value)}><option value="">Elegí una provincia</option>{PROVINCIAS.map((o) => <option key={o}>{o}</option>)}</select></Field>
-            <Field label="Municipio"><select className="input" value={vet.municipio || ""} onChange={(e) => set("municipio")(e.target.value)}><option value="">Elegí un municipio</option>{MUNICIPIOS.map((o) => <option key={o}>{o}</option>)}</select></Field>
+          <div style={{ fontSize: 12.5, color: "var(--muted)" }}>
+            ¿Dónde atendés? Si vas a domicilio o a las propiedades, marcá todos los lugares a los que vas.
           </div>
-          <Field label="Zona"><select className="input" value={vet.zona || ""} onChange={(e) => set("zona")(e.target.value)}><option value="">Elegí una zona</option>{ZONAS.map((o) => <option key={o}>{o}</option>)}</select></Field>
-          <Field label="Dirección"><input className="input" value={vet.address || ""} onChange={(e) => set("address")(e.target.value)} /></Field>
+          <PlaceSelect label="Provincias" allLabel={ALL_PROVINCIAS} options={PROVINCIAS} selected={vetProvincias(vet)} onChange={(v) => setVet((x) => ({ ...x, provincias: v, provincia: v[0] || null }))} />
+          <PlaceSelect label="Municipios" allLabel={ALL_MUNICIPIOS} options={MUNICIPIOS} selected={vetMunicipios(vet)} onChange={(v) => setVet((x) => ({ ...x, municipios: v, municipio: v[0] || null }))} />
+          <PlaceSelect label="Zonas (dentro de Santa Cruz de la Sierra)" allLabel={ALL_ZONAS} options={ZONAS} selected={vetZonas(vet)} onChange={(v) => setVet((x) => ({ ...x, zonas: v, zona: v[0] || null }))} />
+          <Field label="Dirección del consultorio (opcional)"><input className="input" value={vet.address || ""} onChange={(e) => set("address")(e.target.value)} /></Field>
           <Field label="Red social (Instagram o TikTok)"><input className="input" value={vet.social_link || ""} onChange={(e) => set("social_link")(e.target.value)} /></Field>
           <Field label="Cambiar contraseña (opcional)"><input className="input" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Dejalo vacío si no querés cambiarla" /></Field>
 

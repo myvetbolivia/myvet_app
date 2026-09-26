@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft } from "lucide-react";
 import Logo from "../components/Logo";
 import { supabase } from "../supabaseClient";
+import { useAuth } from "../context/AuthContext";
 
 export default function VetLogin() {
   const navigate = useNavigate();
@@ -10,6 +11,12 @@ export default function VetLogin() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const { session, profile } = useAuth();
+
+  // Si el veterinario ya tiene la sesión abierta en este celular, no le pedimos la contraseña de nuevo.
+  useEffect(() => {
+    if (session && profile?.role === "veterinarian") navigate("/veterinario/panel", { replace: true });
+  }, [session, profile]);
 
   const submit = async () => {
     setLoading(true);

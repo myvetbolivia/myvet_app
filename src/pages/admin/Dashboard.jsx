@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, XCircle, Clock, Stethoscope, Users, Star, PlayCircle, PauseCircle, Phone, MessageCircle } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Stethoscope, Users, Star, PlayCircle, PauseCircle, Phone, MessageCircle, Trash2 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
+import { AVATAR_BUCKET } from "../../lib/uploadAvatar";
 import { PLAN_LABEL } from "../../lib/constants";
 
 function daysUntil(dateStr) {
@@ -58,6 +59,28 @@ export default function AdminDashboard() {
   const confirmReactivate = async (id) => {
     await supabase.from("veterinarian_profiles").update({ profile_status: "active", plan: activationPlan, plan_expiry: activationDate }).eq("id", id);
     setReactivatingId(null);
+    load();
+  };
+  // Borra del todo a un veterinario: su cuenta, su ficha, reseñas, fotos y documentos.
+  const [deletingId, setDeletingId] = useState(null);
+  const removeFolder = async (bucket, folder) => {
+    const { data } = await supabase.storage.from(bucket).list(folder, { limit: 100 });
+    const paths = (data || []).filter((f) => f.name && f.id).map((f) => `${folder}/${f.name}`);
+    if (paths.length) await supabase.storage.from(bucket).remove(paths);
+  };
+  const deleteVet = async (v) => {
+    const ok = window.confirm(
+      `¿Borrar el perfil de ${v.full_name}?\n\nSe eliminan su perfil, sus fotos, sus documentos y sus reseñas. Esto no se puede deshacer.`
+    );
+    if (!ok) return;
+    setDeletingId(v.id);
+    // 1) Fotos y documentos (si falla, igual se borra el perfil)
+    try { await removeFolder(AVATAR_BUCKET, v.id); } catch (e) { console.error("No se pudieron borrar las fotos:", e); }
+    try { await removeFolder("verification-documents", v.id); } catch (e) { console.error("No se pudieron borrar los documentos:", e); }
+    // 2) La cuenta: al borrarla se borran también su ficha, documentos y reseñas
+    const { error } = await supabase.from("profiles").delete().eq("id", v.id);
+    setDeletingId(null);
+    if (error) { alert("No se pudo borrar el perfil. Intentá de nuevo."); console.error(error); return; }
     load();
   };
   const saveExpiry = async (id) => { await supabase.from("veterinarian_profiles").update({ plan_expiry: draftDate }).eq("id", id); setEditingExpiryId(null); load(); };
@@ -166,12 +189,13 @@ export default function AdminDashboard() {
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {inactiveList.map((v) => (
             <div key={v.id} style={{ border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden", opacity: .85 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 14px" }}>
-                <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", flexWrap: "wrap" }}>
+                <div style={{ flex: 1, minWidth: 160 }}>
                   <div style={{ fontWeight: 700, fontSize: 13.5 }}>{v.full_name}</div>
                   <div style={{ fontSize: 12, color: "var(--muted)" }}>{daysUntil(v.plan_expiry) < 0 ? `Venció el ${v.plan_expiry}` : `Estuvo activo hasta ${v.plan_expiry}`}</div>
                 </div>
                 <button onClick={() => startReactivate(v.id)} style={{ fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 5, color: "var(--primary)", background: "var(--celeste-soft)", border: "none", borderRadius: 9, padding: "9px 12px", cursor: "pointer" }}><PlayCircle size={14} /> Reactivar</button>
+                <button onClick={() => deleteVet(v)} disabled={deletingId === v.id} style={{ fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 5, color: "var(--danger)", background: "var(--danger-soft)", border: "none", borderRadius: 9, padding: "9px 12px", cursor: deletingId === v.id ? "wait" : "pointer" }}><Trash2 size={14} /> {deletingId === v.id ? "Borrando..." : "Borrar"}</button>
               </div>
               {reactivatingId === v.id && (
                 <div style={{ background: "var(--surface-alt)", padding: 14, display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 10, alignItems: "end" }}>

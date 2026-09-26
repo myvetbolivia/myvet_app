@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { MapPin, ChevronRight } from "lucide-react";
 import PlanBadge from "./PlanBadge";
 import Stars from "./Stars";
+import { placesSummary } from "../lib/constants";
 
 export default function VetRow({ vet }) {
   const navigate = useNavigate();
@@ -23,7 +24,7 @@ export default function VetRow({ vet }) {
           {vet.specialties?.[0]} · {(vet.species || []).join(", ")}
         </div>
         <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 5, display: "flex", alignItems: "center", gap: 4 }}>
-          <MapPin size={13} /> {vet.municipio} · {vet.provincia} · {vet.zona}
+          <MapPin size={13} /> {placesSummary(vet) || "Ubicación a confirmar"}
         </div>
       </div>
       <div style={{ textAlign: "right", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>

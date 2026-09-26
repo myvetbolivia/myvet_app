@@ -4,10 +4,11 @@ import { CheckCircle2, Camera, Upload } from "lucide-react";
 import Logo from "../components/Logo";
 import MultiSelect from "../components/MultiSelect";
 import SpecialtyPicker from "../components/SpecialtyPicker";
+import PlaceSelect from "../components/PlaceSelect";
 import TermsModal from "../components/TermsModal";
 import { supabase } from "../supabaseClient";
 import { uploadAvatar, safeFileName } from "../lib/uploadAvatar";
-import { SPECIES, SERVICES, PROVINCIAS, MUNICIPIOS, ZONAS } from "../lib/constants";
+import { SPECIES, SERVICES, PROVINCIAS, MUNICIPIOS, ZONAS, ALL_PROVINCIAS, ALL_MUNICIPIOS, ALL_ZONAS } from "../lib/constants";
 
 const STEPS = ["Datos básicos", "Especialidades y zona", "Documentación"];
 
@@ -30,9 +31,9 @@ export default function VetRegister() {
   const [species, setSpecies] = useState([]);
   const [specialties, setSpecialties] = useState([]);
   const [services, setServices] = useState([]);
-  const [provincia, setProvincia] = useState("");
-  const [municipio, setMunicipio] = useState("");
-  const [zona, setZona] = useState("");
+  const [provincias, setProvincias] = useState([]);
+  const [municipios, setMunicipios] = useState([]);
+  const [zonas, setZonas] = useState([]);
   const [address, setAddress] = useState("");
   const [social, setSocial] = useState("");
 
@@ -87,7 +88,8 @@ export default function VetRegister() {
         description: description.trim() || "Todavía no agregó una descripción.",
         university: university.trim() || null,
         species, specialties, services,
-        provincia: provincia || null, municipio: municipio || null, zona: zona || null,
+        provincias, municipios, zonas,
+        provincia: provincias[0] || null, municipio: municipios[0] || null, zona: zonas[0] || null,
         address: address.trim() || null,
         social_link: social.trim() || null,
         photo_url: photoUrl,
@@ -174,24 +176,13 @@ export default function VetRegister() {
               <MultiSelect label="Especies que atendés" options={SPECIES} selected={species} onChange={setSpecies} />
               <SpecialtyPicker label="Especialidades (podés elegir varias)" selected={specialties} onChange={setSpecialties} />
               <MultiSelect label="Servicios que ofrecés" options={SERVICES} selected={services} onChange={setServices} />
-              <div className="g2">
-                <Field label="Provincia">
-                  <select className="input" value={provincia} onChange={(e) => setProvincia(e.target.value)}>
-                    <option value="">Elegí una provincia</option>{PROVINCIAS.map((o) => <option key={o}>{o}</option>)}
-                  </select>
-                </Field>
-                <Field label="Municipio">
-                  <select className="input" value={municipio} onChange={(e) => setMunicipio(e.target.value)}>
-                    <option value="">Elegí un municipio</option>{MUNICIPIOS.map((o) => <option key={o}>{o}</option>)}
-                  </select>
-                </Field>
+              <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2 }}>
+                ¿Dónde atendés? Si vas a domicilio o a las propiedades, marcá todos los lugares a los que vas.
               </div>
-              <Field label="Zona (si aplica, dentro de Santa Cruz de la Sierra)">
-                <select className="input" value={zona} onChange={(e) => setZona(e.target.value)}>
-                  <option value="">Elegí una zona</option>{ZONAS.map((o) => <option key={o}>{o}</option>)}
-                </select>
-              </Field>
-              <Field label="Dirección"><input className="input" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Calle / referencia" /></Field>
+              <PlaceSelect label="Provincias" allLabel={ALL_PROVINCIAS} options={PROVINCIAS} selected={provincias} onChange={setProvincias} />
+              <PlaceSelect label="Municipios" allLabel={ALL_MUNICIPIOS} options={MUNICIPIOS} selected={municipios} onChange={setMunicipios} />
+              <PlaceSelect label="Zonas (dentro de Santa Cruz de la Sierra)" allLabel={ALL_ZONAS} options={ZONAS} selected={zonas} onChange={setZonas} />
+              <Field label="Dirección del consultorio (opcional)"><input className="input" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Calle / referencia" /></Field>
               <Field label="Red social (Instagram o TikTok, opcional)"><input className="input" value={social} onChange={(e) => setSocial(e.target.value)} placeholder="https://instagram.com/tu_usuario" /></Field>
               {!step1Valid && <Hint>Elegí al menos una especie y una especialidad para continuar.</Hint>}
             </>

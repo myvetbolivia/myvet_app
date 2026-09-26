@@ -5,7 +5,7 @@ import Navbar from "../components/Navbar";
 import VetRow from "../components/VetRow";
 import SpecialtyPicker from "../components/SpecialtyPicker";
 import { supabase } from "../supabaseClient";
-import { SPECIES, PROVINCIAS, ZONAS, SERVICES, visibleSpecialties } from "../lib/constants";
+import { SPECIES, PROVINCIAS, MUNICIPIOS, ZONAS, SERVICES, visibleSpecialties, vetProvincias, vetMunicipios, vetZonas, servesIn, ALL_PROVINCIAS, ALL_MUNICIPIOS, ALL_ZONAS } from "../lib/constants";
 import { useSearchFilters } from "../lib/useSearchFilters";
 
 function CheckList({ options, selected, onToggle, maxHeight }) {
@@ -24,6 +24,7 @@ export default function Results() {
   const navigate = useNavigate();
   const { filters, setFilters } = useSearchFilters();
   const { species, specialties, provincias, zonas, services } = filters;
+  const municipios = filters.municipios || [];
   const [allVets, setAllVets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -38,22 +39,23 @@ export default function Results() {
 
   const toggle = (key, value) => setFilters((f) => ({
     ...f,
-    [key]: f[key].includes(value) ? f[key].filter((x) => x !== value) : [...f[key], value],
+    [key]: (f[key] || []).includes(value) ? f[key].filter((x) => x !== value) : [...(f[key] || []), value],
   }));
 
   const results = useMemo(() => {
     let list = [...allVets];
     if (species.length) list = list.filter((v) => (v.species || []).some((s) => species.includes(s)));
-    if (provincias.length) list = list.filter((v) => provincias.includes(v.provincia));
-    if (zonas.length) list = list.filter((v) => zonas.includes(v.zona));
+    if (provincias.length) list = list.filter((v) => servesIn(vetProvincias(v), provincias, ALL_PROVINCIAS));
+    if (municipios.length) list = list.filter((v) => servesIn(vetMunicipios(v), municipios, ALL_MUNICIPIOS));
+    if (zonas.length) list = list.filter((v) => servesIn(vetZonas(v), zonas, ALL_ZONAS));
     if (services.length) list = list.filter((v) => (v.services || []).some((s) => services.includes(s)));
     if (specialties.length) list = list.filter((v) => visibleSpecialties(v).some((s) => specialties.includes(s)));
     const rank = { ultra: 0, premium: 1, basico: 2 };
     return list.sort((a, b) => rank[a.plan] - rank[b.plan]);
-  }, [allVets, species, provincias, zonas, services, specialties]);
+  }, [allVets, species, provincias, municipios, zonas, services, specialties]);
 
-  const hasFilters = species.length || provincias.length || zonas.length || services.length || specialties.length;
-  const clearAll = () => setFilters({ species: [], specialties: [], provincias: [], zonas: [], services: [] });
+  const hasFilters = species.length || provincias.length || municipios.length || zonas.length || services.length || specialties.length;
+  const clearAll = () => setFilters({ species: [], specialties: [], provincias: [], municipios: [], zonas: [], services: [] });
 
   const filterPanel = (
     <div className="card" style={{ padding: 18, position: "sticky", top: 20, display: "flex", flexDirection: "column", gap: 20 }}>
@@ -65,6 +67,10 @@ export default function Results() {
       <div>
         <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 12 }}>Provincia</div>
         <CheckList options={PROVINCIAS} selected={provincias} onToggle={(o) => toggle("provincias", o)} maxHeight={160} />
+      </div>
+      <div>
+        <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 12 }}>Municipio</div>
+        <CheckList options={MUNICIPIOS} selected={municipios} onToggle={(o) => toggle("municipios", o)} />
       </div>
       <div>
         <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 12 }}>Zona (Santa Cruz de la Sierra)</div>
@@ -106,7 +112,7 @@ export default function Results() {
           style={{ display: "none", width: "100%", justifyContent: "space-between", background: "#fff", border: "1.5px solid var(--border)", marginBottom: 14 }}
           id="filters-toggle"
         >
-          <span>Filtros {hasFilters ? `(${species.length + provincias.length + zonas.length + services.length + specialties.length})` : ""}</span>
+          <span>Filtros {hasFilters ? `(${species.length + provincias.length + municipios.length + zonas.length + services.length + specialties.length})` : ""}</span>
           {filtersOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
         <style>{`

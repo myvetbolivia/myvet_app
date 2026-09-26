@@ -6,6 +6,7 @@ import VetCard from "../components/VetCard";
 import MultiSelect from "../components/MultiSelect";
 import SpecialtyPicker from "../components/SpecialtyPicker";
 import InstallBanner from "../components/InstallBanner";
+import VetNewsBanner from "../components/VetNewsBanner";
 import { supabase } from "../supabaseClient";
 import { SPECIES, PROVINCIAS, ZONAS } from "../lib/constants";
 import { useSearchFilters } from "../lib/useSearchFilters";
@@ -43,6 +44,7 @@ export default function Home() {
             De medicina de pequeños animales a piscicultura: filtrá por especie, especialidad, provincia y zona, y contactá directo por WhatsApp o llamada.
           </p>
 
+          <VetNewsBanner style={{ maxWidth: 560, margin: "22px 0 0" }} />
           <InstallBanner style={{ width: "100%", maxWidth: 560, textAlign: "left", margin: "22px 0 0" }} />
 
           <div className="card" style={{ marginTop: 28, width: "100%", padding: 22, textAlign: "left", boxShadow: "0 20px 50px -20px rgba(14,110,100,0.25)" }}>
