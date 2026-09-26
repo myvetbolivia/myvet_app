@@ -5,6 +5,9 @@ import Logo from "../components/Logo";
 import MultiSelect from "../components/MultiSelect";
 import SpecialtyPicker from "../components/SpecialtyPicker";
 import PlaceSelect from "../components/PlaceSelect";
+import ClinicLocationFields from "../components/ClinicLocationFields";
+import ScheduleEditor from "../components/ScheduleEditor";
+import { isValidMapsUrl } from "../lib/location";
 import { supabase } from "../supabaseClient";
 import { useAuth } from "../context/AuthContext";
 import { getVetNews, markVetNewsSeen } from "../lib/vetNews";
@@ -24,6 +27,7 @@ export default function VetDashboard() {
   const [saved, setSaved] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [news, setNews] = useState([]);
+  const [saveError, setSaveError] = useState("");
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoError, setPhotoError] = useState("");
   const [galleryUploading, setGalleryUploading] = useState(false);
@@ -58,13 +62,16 @@ export default function VetDashboard() {
   }
 
   const save = async () => {
+    if (!isValidMapsUrl(vet.maps_url)) { setSaveError("Revisá el link de Google Maps: no parece válido."); return; }
+    setSaveError("");
     const updated = {
       full_name: vet.full_name, email: vet.email, phone: vet.phone, whatsapp: vet.whatsapp,
       description: vet.description, university: vet.university, species: vet.species,
       specialties: vet.specialties, services: vet.services,
       provincias: vetProvincias(vet), municipios: vetMunicipios(vet), zonas: vetZonas(vet),
       provincia: vetProvincias(vet)[0] || null, municipio: vetMunicipios(vet)[0] || null, zona: vetZonas(vet)[0] || null,
-      address: vet.address, social_link: vet.social_link,
+      address: vet.address, social_link: vet.social_link, schedule: (vet.schedule || []).filter(([d]) => d && d !== "A confirmar"),
+      maps_url: (vet.maps_url || "").trim() || null, lat: vet.lat || null, lng: vet.lng || null,
     };
     await supabase.from("veterinarian_profiles").update(updated).eq("id", vet.id);
     if (newPassword.trim().length >= 6) {
@@ -281,7 +288,12 @@ export default function VetDashboard() {
           <PlaceSelect label="Provincias" allLabel={ALL_PROVINCIAS} options={PROVINCIAS} selected={vetProvincias(vet)} onChange={(v) => setVet((x) => ({ ...x, provincias: v, provincia: v[0] || null }))} />
           <PlaceSelect label="Municipios" allLabel={ALL_MUNICIPIOS} options={MUNICIPIOS} selected={vetMunicipios(vet)} onChange={(v) => setVet((x) => ({ ...x, municipios: v, municipio: v[0] || null }))} />
           <PlaceSelect label="Zonas (dentro de Santa Cruz de la Sierra)" allLabel={ALL_ZONAS} options={ZONAS} selected={vetZonas(vet)} onChange={(v) => setVet((x) => ({ ...x, zonas: v, zona: v[0] || null }))} />
-          <Field label="Dirección del consultorio (opcional)"><input className="input" value={vet.address || ""} onChange={(e) => set("address")(e.target.value)} /></Field>
+          <ClinicLocationFields
+            address={vet.address} onAddress={set("address")}
+            mapsUrl={vet.maps_url} onMapsUrl={set("maps_url")}
+            lat={vet.lat} lng={vet.lng} onCoords={(lat, lng) => setVet((x) => ({ ...x, lat, lng }))}
+          />
+          <ScheduleEditor value={vet.schedule} onChange={set("schedule")} />
           <Field label="Red social (Instagram o TikTok)"><input className="input" value={vet.social_link || ""} onChange={(e) => set("social_link")(e.target.value)} /></Field>
           <Field label="Cambiar contraseña (opcional)"><input className="input" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Dejalo vacío si no querés cambiarla" /></Field>
 
@@ -289,6 +301,7 @@ export default function VetDashboard() {
             <button className="btn btn-primary" onClick={save}><CheckCircle2 size={16} /> Guardar cambios</button>
             <button className="btn btn-ghost" onClick={async () => { await signOut(); navigate("/"); }}><LogOut size={16} /> Salir del perfil</button>
             {saved && <span style={{ fontSize: 13, color: "var(--primary)", fontWeight: 700 }}>¡Cambios guardados!</span>}
+            {saveError && <span style={{ fontSize: 13, color: "var(--danger)", fontWeight: 700 }}>{saveError}</span>}
           </div>
         </div>
       </div>

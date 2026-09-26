@@ -5,6 +5,9 @@ import Logo from "../components/Logo";
 import MultiSelect from "../components/MultiSelect";
 import SpecialtyPicker from "../components/SpecialtyPicker";
 import PlaceSelect from "../components/PlaceSelect";
+import ClinicLocationFields from "../components/ClinicLocationFields";
+import ScheduleEditor from "../components/ScheduleEditor";
+import { isValidMapsUrl } from "../lib/location";
 import TermsModal from "../components/TermsModal";
 import { supabase } from "../supabaseClient";
 import { uploadAvatar, safeFileName } from "../lib/uploadAvatar";
@@ -35,6 +38,9 @@ export default function VetRegister() {
   const [municipios, setMunicipios] = useState([]);
   const [zonas, setZonas] = useState([]);
   const [address, setAddress] = useState("");
+  const [mapsUrl, setMapsUrl] = useState("");
+  const [schedule, setSchedule] = useState([]);
+  const [coords, setCoords] = useState({ lat: null, lng: null });
   const [social, setSocial] = useState("");
 
   const [photoFile, setPhotoFile] = useState(null);
@@ -45,7 +51,7 @@ export default function VetRegister() {
 
   const passwordValid = password.length >= 6 && password === password2;
   const step0Valid = fullName.trim().length > 1 && whatsapp.trim().length > 3 && email.trim().length > 3 && passwordValid;
-  const step1Valid = species.length > 0 && specialties.length > 0;
+  const step1Valid = species.length > 0 && specialties.length > 0 && isValidMapsUrl(mapsUrl);
   const step2Valid = acceptedTerms && acceptedProfessional;
 
   const handleSubmit = async () => {
@@ -91,9 +97,10 @@ export default function VetRegister() {
         provincias, municipios, zonas,
         provincia: provincias[0] || null, municipio: municipios[0] || null, zona: zonas[0] || null,
         address: address.trim() || null,
+        maps_url: mapsUrl.trim() || null, lat: coords.lat, lng: coords.lng,
         social_link: social.trim() || null,
         photo_url: photoUrl,
-        schedule: [["A confirmar", "—"]],
+        schedule,
       });
       if (insertError) throw insertError;
 
@@ -182,9 +189,14 @@ export default function VetRegister() {
               <PlaceSelect label="Provincias" allLabel={ALL_PROVINCIAS} options={PROVINCIAS} selected={provincias} onChange={setProvincias} />
               <PlaceSelect label="Municipios" allLabel={ALL_MUNICIPIOS} options={MUNICIPIOS} selected={municipios} onChange={setMunicipios} />
               <PlaceSelect label="Zonas (dentro de Santa Cruz de la Sierra)" allLabel={ALL_ZONAS} options={ZONAS} selected={zonas} onChange={setZonas} />
-              <Field label="Dirección del consultorio (opcional)"><input className="input" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Calle / referencia" /></Field>
+              <ClinicLocationFields
+                address={address} onAddress={setAddress}
+                mapsUrl={mapsUrl} onMapsUrl={setMapsUrl}
+                lat={coords.lat} lng={coords.lng} onCoords={(lat, lng) => setCoords({ lat, lng })}
+              />
+              <ScheduleEditor value={schedule} onChange={setSchedule} />
               <Field label="Red social (Instagram o TikTok, opcional)"><input className="input" value={social} onChange={(e) => setSocial(e.target.value)} placeholder="https://instagram.com/tu_usuario" /></Field>
-              {!step1Valid && <Hint>Elegí al menos una especie y una especialidad para continuar.</Hint>}
+              {!step1Valid && <Hint>{isValidMapsUrl(mapsUrl) ? "Elegí al menos una especie y una especialidad para continuar." : "Revisá el link de Google Maps: no parece válido."}</Hint>}
             </>
           )}
 

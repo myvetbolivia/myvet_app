@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Sparkles, ChevronRight } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { useAuth } from "../context/AuthContext";
-import { getVetNews } from "../lib/vetNews";
+import { getVetNews, NEWS_COLUMNS } from "../lib/vetNews";
 
 // Aviso en la página principal para el veterinario que tiene la sesión abierta:
 // le cuenta cuánta gente vio su perfil o lo contactó desde su última visita.
@@ -17,7 +17,7 @@ export default function VetNewsBanner({ style }) {
     if (!isVet) { setNews([]); return; }
     supabase
       .from("veterinarian_profiles")
-      .select("id, profile_views, whatsapp_clicks, call_clicks, location_clicks, reviews_count")
+      .select(NEWS_COLUMNS)
       .eq("id", session.user.id)
       .maybeSingle()
       .then(({ data }) => setNews(getVetNews(data)));

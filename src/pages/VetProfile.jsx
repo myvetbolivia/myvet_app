@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ChevronLeft, Phone, MessageCircle, MapPin, GraduationCap, CalendarDays, Star, Link as LinkIcon, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, Phone, MessageCircle, MapPin, GraduationCap, CalendarDays, Star, Link as LinkIcon, ChevronRight, X, Home as HomeIcon } from "lucide-react";
 import Navbar from "../components/Navbar";
 import PlanBadge from "../components/PlanBadge";
 import Stars from "../components/Stars";
 import { supabase } from "../supabaseClient";
 import { visibleSpecialties, hasGallery, vetProvincias, vetMunicipios, vetZonas } from "../lib/constants";
 import { useAuth } from "../context/AuthContext";
+import { hasClinic, clinicMapsLink, servesOnSite } from "../lib/location";
+import { track, boliviaNumber } from "../lib/track";
 
-function digitsOnly(s) { return (s || "").replace(/\D/g, ""); }
 
 export default function VetProfile() {
   const { id } = useParams();
@@ -31,23 +32,29 @@ export default function VetProfile() {
   const isOwner = session?.user?.id === id;
   useEffect(() => {
     if (authLoading || isOwner) return;
-    supabase.rpc("increment_profile_view", { p_vet_id: id });
+    track("increment_profile_view", id);
   }, [id, authLoading]);
 
   if (!vet) return <div><Navbar /><div className="container" style={{ padding: 40 }}>Cargando perfil...</div></div>;
 
   const showReviews = vet.plan !== "basico";
-  const showSchedule = vet.plan !== "basico";
+  const schedule = (vet.schedule || []).filter(([d]) => d && d !== "A confirmar");
+  const showSchedule = vet.plan !== "basico" && schedule.length > 0;
   const gallery = hasGallery(vet) ? (vet.gallery || []) : [];
 
-  const callVet = () => { if (!isOwner) supabase.rpc("increment_call_click", { p_vet_id: id }); window.location.href = `tel:+${digitsOnly(vet.phone)}`; };
+  const phoneToCall = boliviaNumber(vet.phone) || boliviaNumber(vet.whatsapp);
+  const callVet = () => {
+    if (!phoneToCall) return;
+    if (!isOwner) track("increment_call_click", id);
+    window.location.href = `tel:+${phoneToCall}`;
+  };
   const openWhatsApp = () => {
-    if (!isOwner) supabase.rpc("increment_whatsapp_click", { p_vet_id: id });
-    const num = digitsOnly(vet.whatsapp);
-    const full = num.length <= 8 ? `591${num}` : num;
+    const full = boliviaNumber(vet.whatsapp);
+    if (!full) return;
+    if (!isOwner) track("increment_whatsapp_click", id);
     window.open(`https://wa.me/${full}?text=${encodeURIComponent(`Hola ${vet.full_name}, te contacto desde MyVet.`)}`, "_blank");
   };
-  const openInMaps = () => { if (!isOwner) supabase.rpc("increment_location_click", { p_vet_id: id }); window.open(`https://www.google.com/maps/search/?api=1&query=${vet.lat},${vet.lng}`, "_blank"); };
+  const openInMaps = () => { if (!isOwner) track("increment_location_click", id); window.open(clinicMapsLink(vet), "_blank"); };
 
   const submitReview = async () => {
     if (!newRating || !session) return;
@@ -98,8 +105,13 @@ export default function VetProfile() {
               <div style={{ display: "flex", gap: 10, marginTop: 22, flexWrap: "wrap" }}>
                 <button className="btn btn-primary" style={{ flex: 1 }} onClick={callVet}><Phone size={16} /> Llamar</button>
                 <button className="btn btn-accent" style={{ flex: 1 }} onClick={openWhatsApp}><MessageCircle size={16} /> WhatsApp</button>
-                <button className="btn btn-ghost" style={{ flex: 1 }} onClick={openInMaps}><MapPin size={16} /> Ver ubicación</button>
+                {hasClinic(vet) && <button className="btn btn-ghost" style={{ flex: 1 }} onClick={openInMaps}><MapPin size={16} /> Ver ubicación</button>}
               </div>
+              {servesOnSite(vet) && (
+                <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8, background: "var(--accent-soft)", color: "#8A4A10", borderRadius: 12, padding: "10px 12px", fontSize: 13.5, fontWeight: 700 }}>
+                  <HomeIcon size={16} /> Atiende en el lugar (a domicilio o en la propiedad)
+                </div>
+              )}
               {vet.social_link && (
                 <button
                   onClick={() => window.open(vet.social_link, "_blank")}
@@ -150,7 +162,7 @@ export default function VetProfile() {
             {showSchedule && (
               <Section title="Horario de atención">
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {(vet.schedule || []).map(([d, h], i) => (
+                  {schedule.map(([d, h], i) => (
                     <div key={i} className="card" style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", fontSize: 13.5 }}>
                       <span style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--muted)" }}><CalendarDays size={14} /> {d}</span>
                       <span style={{ fontWeight: 700 }}>{h}</span>
@@ -202,7 +214,9 @@ export default function VetProfile() {
           <div>
             <div className="card" style={{ padding: 20, position: "sticky", top: 20 }}>
               <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 14 }}>Datos de contacto</div>
-              {vet.address && <InfoRow icon={MapPin} label={vet.address} />}
+              {hasClinic(vet)
+                ? <InfoRow icon={MapPin} label={vet.address ? `Consultorio: ${vet.address}` : "Ver consultorio en el mapa"} onClick={openInMaps} />
+                : <InfoRow icon={HomeIcon} label="Atiende en el lugar" />}
               <InfoRow icon={Phone} label={vet.phone} onClick={callVet} />
               <InfoRow icon={MessageCircle} label={vet.whatsapp} onClick={openWhatsApp} />
               {vet.lat && vet.lng && (
