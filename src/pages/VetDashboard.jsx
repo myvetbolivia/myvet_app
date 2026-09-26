@@ -1,18 +1,19 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, Clock, PauseCircle, Bell, TrendingUp, Eye, MessageCircle, Phone, Star, LogOut, Camera, Sparkles, MapPin, Upload, ImagePlus, X, Lock } from "lucide-react";
+import { CheckCircle2, Clock, PauseCircle, Bell, TrendingUp, Eye, MessageCircle, Phone, Star, LogOut, Pencil, Camera, Sparkles, MapPin, Upload, ImagePlus, X, Lock } from "lucide-react";
 import Logo from "../components/Logo";
 import MultiSelect from "../components/MultiSelect";
 import SpecialtyPicker from "../components/SpecialtyPicker";
 import PlaceSelect from "../components/PlaceSelect";
 import ClinicLocationFields from "../components/ClinicLocationFields";
 import ScheduleEditor from "../components/ScheduleEditor";
+import VetProfile from "./VetProfile";
 import { isValidMapsUrl } from "../lib/location";
 import { supabase } from "../supabaseClient";
 import { useAuth } from "../context/AuthContext";
 import { getVetNews, markVetNewsSeen } from "../lib/vetNews";
 import { uploadAvatar, uploadGalleryPhoto, deleteImageByUrl } from "../lib/uploadAvatar";
-import { SPECIES, SERVICES, PROVINCIAS, MUNICIPIOS, ZONAS, ALL_PROVINCIAS, ALL_MUNICIPIOS, ALL_ZONAS, vetProvincias, vetMunicipios, vetZonas, PLAN_LABEL, GALLERY_MAX, hasGallery, SUPPORT_EMAIL } from "../lib/constants";
+import { SPECIES, SERVICES, PROVINCIAS, MUNICIPIOS, ZONAS, ALL_PROVINCIAS, ALL_MUNICIPIOS, ALL_ZONAS, vetProvincias, vetMunicipios, vetZonas, PLAN_LABEL, galleryMax, hasGallery, SUPPORT_EMAIL } from "../lib/constants";
 
 function daysUntil(dateStr) {
   if (!dateStr) return 9999;
@@ -28,6 +29,8 @@ export default function VetDashboard() {
   const [newPassword, setNewPassword] = useState("");
   const [news, setNews] = useState([]);
   const [saveError, setSaveError] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [previewKey, setPreviewKey] = useState(0);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoError, setPhotoError] = useState("");
   const [galleryUploading, setGalleryUploading] = useState(false);
@@ -80,6 +83,20 @@ export default function VetDashboard() {
     }
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
+    setEditing(false);
+    setPreviewKey((k) => k + 1);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Cancelar: descarta lo que no se guardó y vuelve a la vista previa
+  const cancelEdit = async () => {
+    const { data } = await supabase.from("veterinarian_profiles").select("*").eq("id", vet.id).maybeSingle();
+    if (data) setVet(data);
+    setSaveError("");
+    setNewPassword("");
+    setEditing(false);
+    setPreviewKey((k) => k + 1);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const set = (field) => (value) => setVet((v) => ({ ...v, [field]: value }));
@@ -115,10 +132,10 @@ export default function VetDashboard() {
   const addGalleryPhotos = async (fileList) => {
     const files = Array.from(fileList || []).filter((f) => f.type.startsWith("image/"));
     if (!files.length) return;
-    const free = GALLERY_MAX - gallery.length;
-    if (free <= 0) { setGalleryError(`Ya tenés ${GALLERY_MAX} fotos. Quitá una para agregar otra.`); return; }
+    const free = galleryMax(vet) - gallery.length;
+    if (free <= 0) { setGalleryError(`Ya tenés ${galleryMax(vet)} fotos. Quitá una para agregar otra.`); return; }
     setGalleryUploading(true);
-    setGalleryError(files.length > free ? `Solo se agregaron ${free} foto(s): el máximo es ${GALLERY_MAX}.` : "");
+    setGalleryError(files.length > free ? `Solo se agregaron ${free} foto(s): el máximo es ${galleryMax(vet)}.` : "");
     try {
       const urls = [];
       for (const f of files.slice(0, free)) urls.push(await uploadGalleryPhoto(vet.id, f));
@@ -214,7 +231,27 @@ export default function VetDashboard() {
           )}
         </div>
 
+        {!editing && (
+          <>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 15 }}>Así ven tu perfil los clientes</div>
+                {saved && <div style={{ fontSize: 13, color: "var(--primary)", fontWeight: 700, marginTop: 2 }}>¡Cambios guardados!</div>}
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button className="btn btn-primary" onClick={() => setEditing(true)}><Pencil size={16} /> Editar perfil</button>
+                <button className="btn btn-ghost" onClick={async () => { await signOut(); navigate("/"); }}><LogOut size={16} /> Salir</button>
+              </div>
+            </div>
+            <div style={{ border: "2px dashed var(--border)", borderRadius: 20, padding: 12, background: "var(--bg)" }}>
+              <VetProfile key={previewKey} vetId={vet.id} embedded />
+            </div>
+          </>
+        )}
+
+        {editing && (
         <div className="card" style={{ padding: 26, display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 800, fontSize: 16 }}><Pencil size={17} color="var(--primary)" /> Editando tu perfil</div>
           <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
             <div style={{ width: 84, height: 84, borderRadius: 22, background: "var(--surface-alt)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 38, flexShrink: 0, overflow: "hidden" }}>
               {vet.photo_url ? <img src={vet.photo_url} alt="Tu foto de perfil" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "🐾"}
@@ -231,7 +268,7 @@ export default function VetDashboard() {
           </div>
 
           <div>
-            <div className="field-label">Galería de fotos{hasGallery(vet) ? ` · ${gallery.length} de ${GALLERY_MAX}` : ""}</div>
+            <div className="field-label">Galería de fotos{hasGallery(vet) ? ` · ${gallery.length} de ${galleryMax(vet)}` : ""}</div>
             {hasGallery(vet) ? (
               <>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))", gap: 10 }}>
@@ -248,7 +285,7 @@ export default function VetDashboard() {
                       </button>
                     </div>
                   ))}
-                  {gallery.length < GALLERY_MAX && (
+                  {gallery.length < galleryMax(vet) && (
                     <label style={{ aspectRatio: "1", borderRadius: 14, border: "1.5px dashed var(--primary)", color: "var(--primary)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, fontSize: 12.5, fontWeight: 700, cursor: galleryUploading ? "wait" : "pointer", opacity: galleryUploading ? 0.6 : 1 }}>
                       <ImagePlus size={20} />
                       {galleryUploading ? "Subiendo..." : "Agregar"}
@@ -257,9 +294,9 @@ export default function VetDashboard() {
                   )}
                 </div>
                 <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 8 }}>
-                  {gallery.length >= GALLERY_MAX
-                    ? `Llegaste al máximo de ${GALLERY_MAX} fotos. Quitá una para agregar otra.`
-                    : `Mostrá tu consultorio, tu equipo o tu trabajo. Máximo ${GALLERY_MAX} fotos. Se guardan automáticamente.`}
+                  {gallery.length >= galleryMax(vet)
+                    ? `Llegaste al máximo de ${galleryMax(vet)} fotos. Quitá una para agregar otra.`
+                    : `Mostrá tu consultorio, tu equipo o tu trabajo. Máximo ${galleryMax(vet)} fotos. Se guardan automáticamente.`}
                 </div>
                 {galleryError && <div style={{ fontSize: 12.5, color: "var(--danger)", marginTop: 6, fontWeight: 600 }}>{galleryError}</div>}
               </>
@@ -299,11 +336,11 @@ export default function VetDashboard() {
 
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <button className="btn btn-primary" onClick={save}><CheckCircle2 size={16} /> Guardar cambios</button>
-            <button className="btn btn-ghost" onClick={async () => { await signOut(); navigate("/"); }}><LogOut size={16} /> Salir del perfil</button>
-            {saved && <span style={{ fontSize: 13, color: "var(--primary)", fontWeight: 700 }}>¡Cambios guardados!</span>}
+            <button className="btn btn-ghost" onClick={cancelEdit}>Cancelar</button>
             {saveError && <span style={{ fontSize: 13, color: "var(--danger)", fontWeight: 700 }}>{saveError}</span>}
           </div>
         </div>
+        )}
       </div>
     </div>
   );

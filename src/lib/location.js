@@ -12,12 +12,18 @@ export function hasClinic(v) {
   return !!((v.maps_url || "").trim() || (v.lat && v.lng) || (v.address || "").trim());
 }
 
-// Link para abrir el consultorio en Google Maps.
+// ¿Tiene el punto exacto en el mapa? (link de Google Maps o ubicación tomada del celular)
+// Solo con la dirección escrita Google Maps no encuentra el lugar exacto en
+// Santa Cruz y muestra toda la ciudad, así que ahí no mostramos el botón.
+export function hasExactLocation(v) {
+  return !!((v.maps_url || "").trim() || (v.lat && v.lng));
+}
+
+// Link para abrir el consultorio en Google Maps (solo si hay punto exacto).
 export function clinicMapsLink(v) {
   if ((v.maps_url || "").trim()) return v.maps_url.trim();
   if (v.lat && v.lng) return `https://www.google.com/maps/search/?api=1&query=${v.lat},${v.lng}`;
-  const parts = [v.address, (v.municipios || [])[0] || v.municipio, "Santa Cruz, Bolivia"].filter(Boolean);
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parts.join(", "))}`;
+  return "";
 }
 
 // ¿Atiende en el lugar (a domicilio o en la propiedad)?

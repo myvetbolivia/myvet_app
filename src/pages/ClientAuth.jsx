@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Logo from "../components/Logo";
 import TermsModal from "../components/TermsModal";
 import { supabase } from "../supabaseClient";
@@ -17,6 +17,11 @@ export default function ClientAuth() {
 
   const canSubmit = email.trim() && pwd.length >= 6 && (mode === "login" || (name.trim() && accepted));
 
+  // Si vino desde un perfil (por ejemplo, para calificar), vuelve a ese perfil al terminar.
+  const location = useLocation();
+  const backTo = location.state?.from || "/";
+  const introMessage = location.state?.message;
+
   const submit = async () => {
     if (!canSubmit) return;
     setLoading(true);
@@ -28,11 +33,11 @@ export default function ClientAuth() {
         options: { data: { full_name: name.trim() } },
       });
       if (error) setError(error.message);
-      else navigate("/");
+      else navigate(backTo);
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: pwd });
       if (error) setError(error.message);
-      else navigate("/");
+      else navigate(backTo);
     }
     setLoading(false);
   };
@@ -43,6 +48,9 @@ export default function ClientAuth() {
         <button onClick={() => navigate(-1)} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 13, cursor: "pointer", marginBottom: 16 }}>← Volver</button>
         <div className="card" style={{ padding: 32 }}>
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}><Logo size={48} /></div>
+          {introMessage && (
+            <div style={{ background: "var(--accent-soft)", color: "#8A4A10", borderRadius: 12, padding: "10px 12px", fontSize: 13, fontWeight: 700, marginBottom: 14, textAlign: "center" }}>{introMessage}</div>
+          )}
           <div style={{ display: "flex", background: "var(--surface-alt)", borderRadius: 12, padding: 4, marginBottom: 22 }}>
             {[["signup", "Crear cuenta"], ["login", "Iniciar sesión"]].map(([id, label]) => (
               <button key={id} onClick={() => setMode(id)} style={{ flex: 1, padding: "9px 0", borderRadius: 9, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: mode === id ? "#fff" : "transparent" }}>{label}</button>

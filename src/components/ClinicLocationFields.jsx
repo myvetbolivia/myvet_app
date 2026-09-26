@@ -68,6 +68,12 @@ export default function ClinicLocationFields({ address, onAddress, mapsUrl, onMa
           <div style={{ fontSize: 12.5, color: "var(--danger)", marginTop: 6, fontWeight: 600 }}>Ese link no parece de Google Maps. Copialo desde Google Maps con el botón Compartir.</div>
         )}
       </div>
+
+      {(address || "").trim() && !(lat && lng) && !(mapsUrl || "").trim() && (
+        <div style={{ fontSize: 12.5, background: "var(--accent-soft)", color: "#8A4A10", borderRadius: 10, padding: "9px 11px", fontWeight: 600, lineHeight: 1.5 }}>
+          Falta el punto exacto: sin él, el botón "Ver ubicación" no aparece en tu perfil. Tocá "Usar mi ubicación actual" o pegá el link de Google Maps.
+        </div>
+      )}
     </div>
   );
 }

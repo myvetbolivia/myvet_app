@@ -32,6 +32,7 @@ const PLANS = [
     id: "ultra", name: "Premium Ultra Smart", tagline: "Mayor visibilidad para llegar más lejos.", tone: "dark", badgeIcon: Crown,
     highlightLabel: "Incluye todo lo del plan Premium, más:",
     highlight: { icon: BarChart3, title: "Prioridad en resultados", desc: "Tu perfil aparecerá primero en las búsquedas de usuarios compatibles." },
+    extraHighlight: { icon: Images, title: "Galería de hasta 10 fotos", desc: "El doble que el plan Premium, para mostrar tu consultorio, tu equipo y tu trabajo." },
     ranking: [{ n: 1, label: "Ultra Smart compatibles" }, { n: 2, label: "Premium compatibles" }, { n: 3, label: "Básicos compatibles" }],
     rankingNote: "Siempre respetando que coincidas con los filtros de búsqueda.",
     footer: "Más visibilidad, más oportunidades", footerIcon: ArrowUpRight,
@@ -101,6 +102,15 @@ function PlanCard({ plan }) {
                 <div style={{ fontSize: 12, color: "rgba(255,255,255,.75)", marginTop: 3 }}>{plan.highlight.desc}</div>
               </div>
             </div>
+            {plan.extraHighlight && (
+              <div style={{ marginTop: 10, background: "rgba(255,255,255,0.08)", borderRadius: 14, padding: 14, display: "flex", gap: 12 }}>
+                <plan.extraHighlight.icon size={20} color="var(--celeste-light)" style={{ flexShrink: 0, marginTop: 2 }} />
+                <div>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: "#fff" }}>{plan.extraHighlight.title}</div>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,.75)", marginTop: 3 }}>{plan.extraHighlight.desc}</div>
+                </div>
+              </div>
+            )}
             <div style={{ marginTop: 14, background: "rgba(255,255,255,0.06)", borderRadius: 14, padding: 14 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,.85)", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
                 <Search size={13} /> Así se muestra en las búsquedas:

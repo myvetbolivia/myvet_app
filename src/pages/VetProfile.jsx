@@ -1,18 +1,22 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { ChevronLeft, Phone, MessageCircle, MapPin, GraduationCap, CalendarDays, Star, Link as LinkIcon, ChevronRight, X, Home as HomeIcon } from "lucide-react";
 import Navbar from "../components/Navbar";
 import PlanBadge from "../components/PlanBadge";
 import Stars from "../components/Stars";
 import { supabase } from "../supabaseClient";
-import { visibleSpecialties, hasGallery, vetProvincias, vetMunicipios, vetZonas } from "../lib/constants";
+import { visibleSpecialties, hasGallery, galleryMax, vetProvincias, vetMunicipios, vetZonas } from "../lib/constants";
 import { useAuth } from "../context/AuthContext";
-import { hasClinic, clinicMapsLink, servesOnSite } from "../lib/location";
+import { hasClinic, hasExactLocation, clinicMapsLink, servesOnSite } from "../lib/location";
 import { track, boliviaNumber } from "../lib/track";
 
 
-export default function VetProfile() {
-  const { id } = useParams();
+// embedded = true: se muestra dentro del panel del veterinario como vista previa
+// ("así ven tu perfil los clientes"), sin menú ni botón de volver.
+export default function VetProfile({ vetId, embedded = false }) {
+  const params = useParams();
+  const id = vetId || params.id;
+  const location = useLocation();
   const navigate = useNavigate();
   const { session, profile, loading: authLoading } = useAuth();
   const [vet, setVet] = useState(null);
@@ -35,12 +39,12 @@ export default function VetProfile() {
     track("increment_profile_view", id);
   }, [id, authLoading]);
 
-  if (!vet) return <div><Navbar /><div className="container" style={{ padding: 40 }}>Cargando perfil...</div></div>;
+  if (!vet) return <div>{!embedded && <Navbar />}<div className="container" style={{ padding: embedded ? 20 : 40 }}>Cargando perfil...</div></div>;
 
   const showReviews = vet.plan !== "basico";
   const schedule = (vet.schedule || []).filter(([d]) => d && d !== "A confirmar");
   const showSchedule = vet.plan !== "basico" && schedule.length > 0;
-  const gallery = hasGallery(vet) ? (vet.gallery || []) : [];
+  const gallery = hasGallery(vet) ? (vet.gallery || []).slice(0, galleryMax(vet)) : [];
 
   const phoneToCall = boliviaNumber(vet.phone) || boliviaNumber(vet.whatsapp);
   const callVet = () => {
@@ -54,7 +58,25 @@ export default function VetProfile() {
     if (!isOwner) track("increment_whatsapp_click", id);
     window.open(`https://wa.me/${full}?text=${encodeURIComponent(`Hola ${vet.full_name}, te contacto desde MyVet.`)}`, "_blank");
   };
-  const openInMaps = () => { if (!isOwner) track("increment_location_click", id); window.open(clinicMapsLink(vet), "_blank"); };
+  const openInMaps = () => {
+    const link = clinicMapsLink(vet);
+    if (!link) return;
+    if (!isOwner) track("increment_location_click", id);
+    window.open(link, "_blank");
+  };
+
+  // Se puede calificar si el plan muestra reseñas y quien mira no es el propio veterinario
+  // (ni otro veterinario). Si no inició sesión, se le pide que inicie sesión.
+  const isClientUser = session && profile?.role === "client";
+  const canRate = !embedded && showReviews && !isOwner && (!session || isClientUser);
+  const startRating = (n) => {
+    if (!isClientUser) {
+      navigate("/ingresar", { state: { from: location.pathname, message: "Iniciá sesión o creá tu cuenta gratis para calificar a este veterinario." } });
+      return;
+    }
+    setNewRating(n);
+    setTimeout(() => document.getElementById("dejar-resena")?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+  };
 
   const submitReview = async () => {
     if (!newRating || !session) return;
@@ -72,11 +94,11 @@ export default function VetProfile() {
 
   return (
     <div>
-      <Navbar />
-      <div className="container" style={{ padding: "20px 28px 80px", maxWidth: 960 }}>
-        <button onClick={() => navigate(-1)} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 13, display: "flex", alignItems: "center", gap: 4, cursor: "pointer", marginBottom: 18 }}>
+      {!embedded && <Navbar />}
+      <div className="container" style={{ padding: embedded ? "0 0 20px" : "20px 28px 80px", maxWidth: 960 }}>
+        {!embedded && <button onClick={() => navigate(-1)} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 13, display: "flex", alignItems: "center", gap: 4, cursor: "pointer", marginBottom: 18 }}>
           <ChevronLeft size={15} /> Volver a resultados
-        </button>
+        </button>}
 
         <div className="side-r">
           <div>
@@ -105,8 +127,20 @@ export default function VetProfile() {
               <div style={{ display: "flex", gap: 10, marginTop: 22, flexWrap: "wrap" }}>
                 <button className="btn btn-primary" style={{ flex: 1 }} onClick={callVet}><Phone size={16} /> Llamar</button>
                 <button className="btn btn-accent" style={{ flex: 1 }} onClick={openWhatsApp}><MessageCircle size={16} /> WhatsApp</button>
-                {hasClinic(vet) && <button className="btn btn-ghost" style={{ flex: 1 }} onClick={openInMaps}><MapPin size={16} /> Ver ubicación</button>}
+                {hasExactLocation(vet) && <button className="btn btn-ghost" style={{ flex: 1 }} onClick={openInMaps}><MapPin size={16} /> Ver ubicación</button>}
               </div>
+              {canRate && (
+                <div style={{ marginTop: 14, background: "var(--accent-soft)", borderRadius: 14, padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                  <span style={{ fontWeight: 800, fontSize: 14, color: "#8A4A10" }}>¿Te atendió? Calificalo</span>
+                  <div style={{ display: "flex", gap: 2 }}>
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <button key={n} type="button" aria-label={`${n} estrella${n > 1 ? "s" : ""}`} onClick={() => startRating(n)} style={{ background: "none", border: "none", cursor: "pointer", padding: 3 }}>
+                        <Star size={28} fill={n <= newRating ? "var(--accent)" : "#fff"} color="var(--accent)" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               {servesOnSite(vet) && (
                 <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8, background: "var(--accent-soft)", color: "#8A4A10", borderRadius: 12, padding: "10px 12px", fontSize: 13.5, fontWeight: 700 }}>
                   <HomeIcon size={16} /> Atiende en el lugar (a domicilio o en la propiedad)
@@ -175,8 +209,8 @@ export default function VetProfile() {
             {showReviews && (
               <Section title={`Reseñas (${reviews.length})`}>
                 <div style={{ marginBottom: 14 }}>
-                  {session && profile?.role === "client" ? (
-                    <div className="card" style={{ background: "var(--surface-alt)", padding: 14, border: "none" }}>
+                  {isOwner || embedded ? null : session && profile?.role === "client" ? (
+                    <div id="dejar-resena" className="card" style={{ background: "var(--surface-alt)", padding: 14, border: "none" }}>
                       <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Dejá tu reseña</div>
                       <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>
                         {[1, 2, 3, 4, 5].map((n) => (
@@ -192,7 +226,7 @@ export default function VetProfile() {
                   ) : (
                     <div className="card" style={{ background: "var(--surface-alt)", padding: 14, border: "none", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                       <span style={{ fontSize: 13, color: "var(--muted)" }}>Iniciá sesión para calificar y comentar sobre este veterinario.</span>
-                      <button className="btn btn-ghost" style={{ padding: "8px 14px", fontSize: 13 }} onClick={() => navigate("/ingresar")}>Iniciar sesión</button>
+                      <button className="btn btn-ghost" style={{ padding: "8px 14px", fontSize: 13 }} onClick={() => navigate("/ingresar", { state: { from: location.pathname } })}>Iniciar sesión</button>
                     </div>
                   )}
                 </div>
@@ -215,7 +249,7 @@ export default function VetProfile() {
             <div className="card" style={{ padding: 20, position: "sticky", top: 20 }}>
               <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 14 }}>Datos de contacto</div>
               {hasClinic(vet)
-                ? <InfoRow icon={MapPin} label={vet.address ? `Consultorio: ${vet.address}` : "Ver consultorio en el mapa"} onClick={openInMaps} />
+                ? <InfoRow icon={MapPin} label={vet.address ? `Consultorio: ${vet.address}` : "Ver consultorio en el mapa"} onClick={hasExactLocation(vet) ? openInMaps : undefined} />
                 : <InfoRow icon={HomeIcon} label="Atiende en el lugar" />}
               <InfoRow icon={Phone} label={vet.phone} onClick={callVet} />
               <InfoRow icon={MessageCircle} label={vet.whatsapp} onClick={openWhatsApp} />

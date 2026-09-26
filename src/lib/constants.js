@@ -46,6 +46,11 @@ export function visibleSpecialties(vet) {
 
 // Galería de fotos: solo para Premium y Premium Ultra Smart, hasta 5 fotos.
 export const GALLERY_MAX = 5;
+// Máximo de fotos de la galería según el plan: Premium 5, Premium Ultra Smart 10.
+export const GALLERY_MAX_ULTRA = 10;
+export function galleryMax(vet) {
+  return vet?.plan === "ultra" ? GALLERY_MAX_ULTRA : GALLERY_MAX;
+}
 export function hasGallery(vet) {
   return vet.plan === "premium" || vet.plan === "ultra";
 }
